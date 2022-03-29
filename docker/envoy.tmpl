@@ -16,7 +16,7 @@ static_resources:
     - filters:
       - name: envoy.filters.network.http_connection_manager
         typed_config:
-          "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          '@type': type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
           codec_type: AUTO
           scheme_header_transformation:
             scheme_to_overwrite: https
@@ -25,16 +25,16 @@ static_resources:
             name: s3_route
             virtual_hosts:
             - name: s3_web
-              domains: ["*"]
+              domains: ['*']
               routes:
               - match:
-                  prefix: "/"
+                  prefix: '/'
                 route:
                   cluster: s3
           http_filters:
           - name: envoy.filters.http.aws_request_signing
             typed_config:
-              "@type": type.googleapis.com/envoy.extensions.filters.http.aws_request_signing.v3.AwsRequestSigning
+              '@type': type.googleapis.com/envoy.extensions.filters.http.aws_request_signing.v3.AwsRequestSigning
               service_name: s3
               region: "${AWS_REGION}"
               use_unsigned_payload: true
@@ -51,7 +51,7 @@ static_resources:
     - filters:
       - name: envoy.filters.network.http_connection_manager
         typed_config:
-          "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          '@type': type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
           codec_type: AUTO
           scheme_header_transformation:
             scheme_to_overwrite: https
@@ -60,16 +60,16 @@ static_resources:
             name: api_route
             virtual_hosts:
             - name: api_web
-              domains: ["*"]
+              domains: ['*']
               routes:
               - match:
-                  prefix: "/"
+                  prefix: '/'
                 route:
                   cluster: apigw
           http_filters:
           - name: envoy.filters.http.aws_request_signing
             typed_config:
-              "@type": type.googleapis.com/envoy.extensions.filters.http.aws_request_signing.v3.AwsRequestSigning
+              '@type': type.googleapis.com/envoy.extensions.filters.http.aws_request_signing.v3.AwsRequestSigning
               service_name: execute-api
               region: "${AWS_REGION}"
               use_unsigned_payload: false
@@ -111,3 +111,4 @@ static_resources:
                 port_value: 443
     transport_socket:
       name: envoy.transport_sockets.tls
+  
