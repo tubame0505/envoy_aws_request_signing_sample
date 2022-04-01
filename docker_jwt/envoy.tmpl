@@ -63,7 +63,7 @@ static_resources:
                   if jwt_client == nil or jwt_client ~= '"${JWT_CLIENT}"' then
                     request_handle:respond({[':status'] = '401'}, 'unauthorized_client_error:')
                   end
-                  if jwt_scope == nil or jwt_scope ~= 'api/api' then
+                  if jwt_scope == nil or jwt_scope ~= 's3/access' then
                     request_handle:respond({[':status'] = '401'}, 'unauthorized_scope_error')
                   end
                 end
@@ -133,7 +133,7 @@ static_resources:
                   if jwt_client == nil or jwt_client ~= '"${JWT_CLIENT}"' then
                     request_handle:respond({[':status'] = '401'}, 'unauthorized_client_error:')
                   end
-                  if jwt_scope == nil or jwt_scope ~= 'api/api' then
+                  if jwt_scope == nil or jwt_scope ~= 'api/invoke' then
                     request_handle:respond({[':status'] = '401'}, 'unauthorized_scope_error')
                   end
                 end
