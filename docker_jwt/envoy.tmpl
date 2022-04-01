@@ -1,0 +1,165 @@
+admin:
+  address:
+    socket_address:
+      protocol: TCP
+      address: 0.0.0.0
+      port_value: 9901
+static_resources:
+  listeners:
+  - name: listener_s3
+    address:
+      socket_address:
+        protocol: TCP
+        address: 0.0.0.0
+        port_value: 10000
+    filter_chains:
+    - filters:
+      - name: envoy.filters.network.http_connection_manager
+        typed_config:
+          '@type': type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          codec_type: AUTO
+          scheme_header_transformation:
+            scheme_to_overwrite: https
+          stat_prefix: ingress_http
+          route_config:
+            name: s3_route
+            virtual_hosts:
+            - name: s3_web
+              domains: ['*']
+              routes:
+              - match:
+                  prefix: '/'
+                route:
+                  cluster: s3
+          http_filters:
+          - name: envoy.filters.http.jwt_authn
+            typed_config:
+              '@type': type.googleapis.com/envoy.extensions.filters.http.jwt_authn.v3.JwtAuthentication
+              providers:
+                cognito:
+                  issuer: "${JWT_ISSUER}"
+                  forward_payload_header: jwt-payload
+                  remote_jwks:
+                    http_uri:
+                      uri: "${JWT_JWK_URI}"
+                      cluster: jwks
+                      timeout: 5s
+                    cache_duration: 600s
+              rules:
+              - match:
+                  prefix: '/'
+                requires:
+                  provider_name: cognito
+          - name: envoy.filters.http.aws_request_signing
+            typed_config:
+              '@type': type.googleapis.com/envoy.extensions.filters.http.aws_request_signing.v3.AwsRequestSigning
+              service_name: s3
+              region: "${AWS_REGION}"
+              use_unsigned_payload: true
+              host_rewrite: "${AWS_S3_ENDPOINT}"
+          - name: envoy.filters.http.router
+
+  - name: listener_api
+    address:
+      socket_address:
+        protocol: TCP
+        address: 0.0.0.0
+        port_value: 10001
+    filter_chains:
+    - filters:
+      - name: envoy.filters.network.http_connection_manager
+        typed_config:
+          '@type': type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          codec_type: AUTO
+          scheme_header_transformation:
+            scheme_to_overwrite: https
+          stat_prefix: ingress_http
+          route_config:
+            name: api_route
+            virtual_hosts:
+            - name: api_web
+              domains: ['*']
+              routes:
+              - match:
+                  prefix: '/'
+                route:
+                  cluster: apigw
+          http_filters:
+          - name: envoy.filters.http.jwt_authn
+            typed_config:
+              '@type': type.googleapis.com/envoy.extensions.filters.http.jwt_authn.v3.JwtAuthentication
+              providers:
+                cognito:
+                  issuer: "${JWT_ISSUER}"
+                  forward_payload_header: jwt-payload
+                  remote_jwks:
+                    http_uri:
+                      uri: "${JWT_JWK_URI}"
+                      cluster: jwks
+                      timeout: 5s
+                    cache_duration: 600s
+              rules:
+              - match:
+                  prefix: '/'
+                requires:
+                  provider_name: cognito
+          - name: envoy.filters.http.aws_request_signing
+            typed_config:
+              '@type': type.googleapis.com/envoy.extensions.filters.http.aws_request_signing.v3.AwsRequestSigning
+              service_name: execute-api
+              region: "${AWS_REGION}"
+              use_unsigned_payload: false
+              host_rewrite: "${AWS_APIGW_ENDPOINT}"
+          - name: envoy.filters.http.router
+  clusters:
+  - name: s3
+    connect_timeout: 30s
+    type: LOGICAL_DNS
+    # Comment out the following line to test on v6 networks
+    dns_lookup_family: V4_ONLY
+    lb_policy: ROUND_ROBIN
+    load_assignment:
+      cluster_name: s3
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: "${AWS_S3_ENDPOINT}"
+                port_value: 443
+    transport_socket:
+      name: envoy.transport_sockets.tls
+
+  - name: apigw
+    connect_timeout: 30s
+    type: LOGICAL_DNS
+    # Comment out the following line to test on v6 networks
+    dns_lookup_family: V4_ONLY
+    lb_policy: ROUND_ROBIN
+    load_assignment:
+      cluster_name: apigw
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: "${AWS_APIGW_ENDPOINT}"
+                port_value: 443
+    transport_socket:
+      name: envoy.transport_sockets.tls
+
+  - name: jwks
+    type: LOGICAL_DNS
+    dns_lookup_family: V4_ONLY
+    load_assignment:
+      cluster_name: jwks
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: "${JWT_ISSUER_HOST}"
+                port_value: 443
+    transport_socket:
+      name: envoy.transport_sockets.tls
+  
