@@ -58,7 +58,14 @@ static_resources:
                 -- Called on the request path.
                 function envoy_on_request(request_handle)
                   -- Do something.
-                  request_handle:headers():replace('jwt-payload', 'abcde') 
+                  local jwt_client = request_handle:streamInfo():dynamicMetadata():get('envoy.filters.http.jwt_authn')['jwt-payload']['client_id']
+                  local jwt_scope = request_handle:streamInfo():dynamicMetadata():get('envoy.filters.http.jwt_authn')['jwt-payload']['scope']
+                  if jwt_client == nil or jwt_client ~= '"${JWT_CLIENT}"' then
+                    request_handle:respond({[':status'] = '401'}, 'unauthorized_client_error:')
+                  end
+                  if jwt_scope == nil or jwt_scope ~= 'api/api' then
+                    request_handle:respond({[':status'] = '401'}, 'unauthorized_scope_error')
+                  end
                 end
           - name: envoy.filters.http.aws_request_signing
             typed_config:
