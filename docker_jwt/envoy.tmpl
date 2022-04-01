@@ -39,6 +39,7 @@ static_resources:
                 cognito:
                   issuer: "${JWT_ISSUER}"
                   forward_payload_header: jwt-payload
+                  payload_in_metadata: jwt-payload
                   remote_jwks:
                     http_uri:
                       uri: "${JWT_JWK_URI}"
@@ -50,6 +51,15 @@ static_resources:
                   prefix: '/'
                 requires:
                   provider_name: cognito
+          - name: envoy.filters.http.lua
+            typed_config:
+              '@type': type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua
+              inline_code: |
+                -- Called on the request path.
+                function envoy_on_request(request_handle)
+                  -- Do something.
+                  request_handle:headers():replace('jwt-payload', 'abcde') 
+                end
           - name: envoy.filters.http.aws_request_signing
             typed_config:
               '@type': type.googleapis.com/envoy.extensions.filters.http.aws_request_signing.v3.AwsRequestSigning
@@ -92,6 +102,7 @@ static_resources:
                 cognito:
                   issuer: "${JWT_ISSUER}"
                   forward_payload_header: jwt-payload
+                  payload_in_metadata: jwt-payload
                   remote_jwks:
                     http_uri:
                       uri: "${JWT_JWK_URI}"
@@ -103,6 +114,22 @@ static_resources:
                   prefix: '/'
                 requires:
                   provider_name: cognito
+          - name: envoy.filters.http.lua
+            typed_config:
+              '@type': type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua
+              inline_code: |
+                -- Called on the request path.
+                function envoy_on_request(request_handle)
+                  -- Do something.
+                  local jwt_client = request_handle:streamInfo():dynamicMetadata():get('envoy.filters.http.jwt_authn')['jwt-payload']['client_id']
+                  local jwt_scope = request_handle:streamInfo():dynamicMetadata():get('envoy.filters.http.jwt_authn')['jwt-payload']['scope']
+                  if jwt_client == nil or jwt_client ~= '"${JWT_CLIENT}"' then
+                    request_handle:respond({[':status'] = '401'}, 'unauthorized_client_error:')
+                  end
+                  if jwt_scope == nil or jwt_scope ~= 'api/api' then
+                    request_handle:respond({[':status'] = '401'}, 'unauthorized_scope_error')
+                  end
+                end
           - name: envoy.filters.http.aws_request_signing
             typed_config:
               '@type': type.googleapis.com/envoy.extensions.filters.http.aws_request_signing.v3.AwsRequestSigning
@@ -162,4 +189,3 @@ static_resources:
                 port_value: 443
     transport_socket:
       name: envoy.transport_sockets.tls
-  
