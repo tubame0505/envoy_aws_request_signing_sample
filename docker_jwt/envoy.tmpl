@@ -58,10 +58,14 @@ static_resources:
                 -- Called on the request path.
                 function envoy_on_request(request_handle)
                   -- Do something.
+                  local jwt_tokenuse = request_handle:streamInfo():dynamicMetadata():get('envoy.filters.http.jwt_authn')['jwt-payload']['token_use']
                   local jwt_client = request_handle:streamInfo():dynamicMetadata():get('envoy.filters.http.jwt_authn')['jwt-payload']['client_id']
                   local jwt_scope = request_handle:streamInfo():dynamicMetadata():get('envoy.filters.http.jwt_authn')['jwt-payload']['scope']
+                  if jwt_tokenuse == nil or jwt_tokenuse ~= 'access' then
+                    request_handle:respond({[':status'] = '401'}, 'unauthorized_tokenuse_error')
+                  end
                   if jwt_client == nil or jwt_client ~= '"${JWT_CLIENT}"' then
-                    request_handle:respond({[':status'] = '401'}, 'unauthorized_client_error:')
+                    request_handle:respond({[':status'] = '401'}, 'unauthorized_client_error')
                   end
                   if jwt_scope == nil or jwt_scope ~= 's3/access' then
                     request_handle:respond({[':status'] = '401'}, 'unauthorized_scope_error')
@@ -128,10 +132,14 @@ static_resources:
                 -- Called on the request path.
                 function envoy_on_request(request_handle)
                   -- Do something.
+                  local jwt_tokenuse = request_handle:streamInfo():dynamicMetadata():get('envoy.filters.http.jwt_authn')['jwt-payload']['token_use']
                   local jwt_client = request_handle:streamInfo():dynamicMetadata():get('envoy.filters.http.jwt_authn')['jwt-payload']['client_id']
                   local jwt_scope = request_handle:streamInfo():dynamicMetadata():get('envoy.filters.http.jwt_authn')['jwt-payload']['scope']
+                  if jwt_tokenuse == nil or jwt_tokenuse ~= 'access' then
+                    request_handle:respond({[':status'] = '401'}, 'unauthorized_tokenuse_error')
+                  end
                   if jwt_client == nil or jwt_client ~= '"${JWT_CLIENT}"' then
-                    request_handle:respond({[':status'] = '401'}, 'unauthorized_client_error:')
+                    request_handle:respond({[':status'] = '401'}, 'unauthorized_client_error')
                   end
                   if jwt_scope == nil or jwt_scope ~= 'api/invoke' then
                     request_handle:respond({[':status'] = '401'}, 'unauthorized_scope_error')
